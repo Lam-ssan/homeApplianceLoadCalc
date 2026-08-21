@@ -269,7 +269,7 @@
       $('#ownedTitle').textContent = '我的设备';
       $('#ownedSub').textContent = '按类型聚类，点击进入查看每台';
       $('#ownedSummary').style.display = '';
-      $('#btnClearOwned').textContent = '清空全部';
+      $('#btnClearOwned').textContent = '继续添加';
       const groups = {};
       arr.forEach(it => { if (DEVICES[it.type]) (groups[it.type] = groups[it.type] || []).push(it); });
       const ids = Object.keys(groups);
@@ -317,7 +317,7 @@
     $('#ownedBack').addEventListener('click', () => { detailType = null; renderOwned(); });
     $('#btnClearOwned').addEventListener('click', () => {
       if (detailType) { detailType = null; renderOwned(); }
-      else { saveInst([]); detailType = null; renderOwned(); }
+      else { showView('view-home'); }
     });
   }
 
