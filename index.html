@@ -52,7 +52,9 @@
             </div>
             <div class="result-bar__cost">约 <span id="rCost">0.00</span> 元/月</div>
           </div>
-          <button class="btn-primary" id="btnDiagnose">智能诊断</button>
+          <div class="result-bar__actions">
+            <button class="btn-primary btn-sm" id="btnAdd">添加设备</button>
+          </div>
         </div>
       </section>
 
@@ -81,30 +83,32 @@
         <div class="tips" id="tips"><!-- JS 渲染 --></div>
       </section>
 
-      <!-- 视图：我的（总览） -->
-      <section class="view" id="view-mine">
-        <h2 class="section-title">我的用电总览</h2>
-        <div class="summary">
+      <!-- 视图：我的设备（聚类 + 下钻） -->
+      <section class="view" id="view-owned">
+        <button class="back-btn" id="ownedBack" style="display:none">‹ 返回</button>
+        <h2 class="section-title" id="ownedTitle">我的设备</h2>
+        <div class="summary" id="ownedSummary">
           <div class="summary__item">
-            <span class="muted">累计月用电</span>
-            <b><span id="sumKwh">0.0</span> kWh</b>
+            <span class="muted">设备总台数</span>
+            <b><span id="ownCount">0</span> 台</b>
           </div>
           <div class="summary__item">
-            <span class="muted">累计月电费</span>
-            <b><span id="sumCost">0.00</span> 元</b>
+            <span class="muted">月用电合计</span>
+            <b><span id="ownKwh">0.0</span> kWh</b>
+            <span class="muted" style="font-size:12px">约 ¥<span id="ownCost">0.00</span>/月</span>
           </div>
         </div>
-        <h3 class="section-sub">已测算设备</h3>
-        <div class="record-list" id="recordList"><!-- JS 渲染 --></div>
-        <button class="btn-ghost" id="btnClear">清空记录</button>
+        <h3 class="section-sub" id="ownedSub">按类型聚类，点击进入查看每台</h3>
+        <div class="record-list" id="ownedList"><!-- JS 渲染 --></div>
+        <button class="btn-ghost" id="btnClearOwned">清空全部</button>
       </section>
     </main>
 
     <!-- 底部导航 -->
     <nav class="tabbar">
       <button class="tab tab--active" data-view="view-home"><span>📱</span>设备</button>
+      <button class="tab" data-view="view-owned"><span>📦</span>我的设备<span class="badge" id="ownBadge" hidden>0</span></button>
       <button class="tab" data-view="view-result"><span>🩺</span>诊断</button>
-      <button class="tab" data-view="view-mine"><span>👤</span>我的</button>
     </nav>
   </div>
 

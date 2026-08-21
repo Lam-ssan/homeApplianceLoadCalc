@@ -192,3 +192,47 @@ body {
 }
 .tab span { font-size: 20px; }
 .tab--active { color: var(--green-d); font-weight: 700; }
+.tab { position: relative; }
+.badge {
+  position: absolute; top: 5px; right: 50%; transform: translateX(22px);
+  background: var(--danger); color: #fff; border-radius: 999px;
+  font-size: 10px; line-height: 1; padding: 2px 5px; min-width: 16px;
+  text-align: center; box-shadow: 0 0 0 2px #fff;
+}
+.badge[hidden] { display: none; }
+
+/* 我的设备：数量步进器 / 删除 / 提示 */
+.stepper { display: flex; align-items: center; gap: 8px; }
+.step {
+  width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line);
+  background: #fff; font-size: 18px; line-height: 1; cursor: pointer; color: var(--text);
+}
+.step:active { background: var(--bg); }
+.step-n { min-width: 18px; text-align: center; font-weight: 700; font-size: 14px; }
+.record__del {
+  background: none; border: none; font-size: 18px; cursor: pointer;
+  margin-left: 2px; padding: 4px; line-height: 1;
+}
+.record__info .warn { color: var(--warn); }
+.owned-row { cursor: pointer; }
+
+/* 轻提示 toast */
+.toast {
+  position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%);
+  background: rgba(31, 41, 51, .92); color: #fff; padding: 9px 18px;
+  border-radius: 999px; font-size: 13px; z-index: 50; opacity: 0;
+  transition: opacity .2s; pointer-events: none; white-space: nowrap;
+}
+.toast--show { opacity: 1; }
+
+/* 计算器结算条：添加 + 诊断 两个按钮 */
+.result-bar__actions { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 10px; white-space: nowrap; }
+
+/* 我的设备：聚类行与下钻 */
+.owned-cluster { cursor: pointer; }
+.cluster-badge {
+  background: var(--green); color: #fff; border-radius: 999px;
+  font-size: 13px; font-weight: 700; padding: 4px 10px; margin-left: 8px;
+}
+.record__info .sub { color: var(--muted); }
