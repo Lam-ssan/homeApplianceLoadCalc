@@ -7,7 +7,7 @@
 
   const STORE_INST = 'hldc_instances';
   const STORE_VER = 'hldc_version';
-  const SCHEMA_VERSION = '2'; // 字段结构变更时递增，旧数据直接重置
+  const SCHEMA_VERSION = '3'; // 字段结构变更时递增，旧数据直接重置
 
   let currentId = null;
   let currentIid = null;

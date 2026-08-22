@@ -3,7 +3,8 @@
  *
  * 每个设备必须声明 model，引擎按模型分支计算，禁止所有电器
  * 共用一套「功率×小时×Π系数」：
- *   constant_power   恒功率：风扇、电视、照明、常开设备
+ *   constant_power   恒功率：电视、厨房小电、电脑等（支持待机/保温项）
+ *   gear_weighted    风扇多档位：按各档位时长加权 + 待机项
  *   thermal_ac       热力空调：ΔT 单变量 + 变频随 ΔT
  *   nameplate_daily  铭牌日耗电：冰箱（能效标识 kWh/24h）
  *   cycle            循环批次：洗衣机（次数 × 单次电耗）
@@ -22,21 +23,19 @@ const APP_CONFIG = {
 };
 
 const DEVICES = {
-  /* ---------- 电风扇（恒功率范例） ---------- */
+  /* ---------- 电风扇（多档位加权范例） ---------- */
   fan: {
-    id: 'fan', name: '电风扇', icon: '🌀', model: 'constant_power',
-    desc: '高温主要延长使用时长，而不是放大功率', ringMax: 120,
+    id: 'fan', name: '电风扇', icon: '🌀', model: 'gear_weighted',
+    desc: '按低/中/高速实际使用时长加权计算，额定功率为高速档基准', ringMax: 120,
     fields: [
-      { key: 'power', label: '额定功率', unit: 'W', type: 'number', group: 'usage', default: 60, min: 1, step: 5 },
-      { key: 'hours', label: '每天使用', unit: '小时', type: 'number', group: 'usage', default: 8, min: 0, max: 24, step: 0.5 },
+      { key: 'power', label: '高速档功率（额定）', unit: 'W', type: 'number', group: 'usage', default: 60, min: 1, step: 5 },
+      { key: 'hHigh', label: '每天·高速档', unit: '小时', type: 'number', group: 'usage', default: 1.5, min: 0, max: 24, step: 0.5 },
+      { key: 'hMid', label: '每天·中速档', unit: '小时', type: 'number', group: 'usage', default: 4, min: 0, max: 24, step: 0.5 },
+      { key: 'hLow', label: '每天·低速档', unit: '小时', type: 'number', group: 'usage', default: 2.5, min: 0, max: 24, step: 0.5 },
       { key: 'days', label: '每月使用天数', unit: '天', type: 'number', group: 'usage', default: 30, min: 0, max: 31, step: 1 },
       { key: 'qty', label: '数量', unit: '台', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
-      { key: 'gear', label: '风速档位', type: 'select', group: 'behavior', role: 'behavior', default: 1.0,
-        options: [
-          { label: '低速（省约60%）', value: 0.4 },
-          { label: '中速（省约30%）', value: 0.7 },
-          { label: '高速', value: 1.0 },
-        ] },
+      { key: 'standby', label: '待机功率', unit: 'W', type: 'number', group: 'identity', default: 1.5, min: 0, step: 0.5,
+        tip: '关机未断电时的功耗，可用功率计实测，一般 0-2W' },
       { key: 'type', label: '类型', type: 'select', group: 'identity', role: 'device', default: 1.0,
         options: [
           { label: '台扇', value: 1.0 },
@@ -66,7 +65,15 @@ const DEVICES = {
           { label: '酷热 >35℃', value: 1.3 },
         ] },
     ],
-    presets: { key: 'power', items: [30, 45, 60, 75], unit: 'W' },
+    presets: {
+      key: 'power',
+      items: [
+        { label: '直流DC扇 28W', value: 28 },
+        { label: '台扇 45W', value: 45 },
+        { label: '落地扇16寸 60W', value: 60 },
+        { label: '工业扇 90W', value: 90 },
+      ], unit: '',
+    },
   },
 
   /* ---------- 分体空调（热力模型：ΔT 合并） ---------- */
@@ -251,6 +258,8 @@ const DEVICES = {
       { key: 'hours', label: '每天观看', unit: '小时', type: 'number', group: 'usage', default: 3.5, min: 0, max: 24, step: 0.5 },
       { key: 'days', label: '每月天数', unit: '天', type: 'number', group: 'usage', default: 30, min: 0, max: 31, step: 1 },
       { key: 'qty', label: '数量', unit: '台', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
+      { key: 'standby', label: '待机功率', unit: 'W', type: 'number', group: 'identity', default: 1, min: 0, step: 0.5,
+        tip: '关机未断电时约 0.5-3W；机顶盒等请计入「常开设备」' },
       { key: 'bri', label: '画质模式', type: 'select', group: 'behavior', role: 'behavior', default: 1.0,
         options: [
           { label: '节能/暗', value: 0.8 },
@@ -286,7 +295,7 @@ const DEVICES = {
       { key: 'power', label: '平均单灯功率', unit: 'W', type: 'number', group: 'identity', default: 12, min: 1, step: 1 },
     ],
     presets: {
-      key: 'pAvg',
+      key: 'power',
       items: [
         { label: 'LED约12W', value: 12 },
         { label: '节能灯约25W', value: 25 },
@@ -312,6 +321,143 @@ const DEVICES = {
       ], unit: '',
     },
   },
+
+  /* ---------- 电饭煲（煮饭 + 保温两段） ---------- */
+  ricecooker: {
+    id: 'ricecooker', name: '电饭煲', icon: '🍚', model: 'constant_power',
+    desc: '按「煮饭时长 + 保温时长」两段计算，保温是长期耗电大头', ringMax: 40,
+    fields: [
+      { key: 'power', label: '煮饭功率', unit: 'W', type: 'number', group: 'usage', default: 800, min: 100, step: 50 },
+      { key: 'hours', label: '每天煮饭时长', unit: '小时', type: 'number', group: 'usage', default: 1, min: 0, max: 12, step: 0.25 },
+      { key: 'days', label: '每月使用天数', unit: '天', type: 'number', group: 'usage', default: 30, min: 0, max: 31, step: 1 },
+      { key: 'qty', label: '数量', unit: '个', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
+      { key: 'warmPower', label: '保温功率', unit: 'W', type: 'number', group: 'identity', default: 40, min: 0, step: 5,
+        tip: '机械式约 30-60W，IH电磁式更低；不用时拔电可忽略' },
+      { key: 'warmHours', label: '每天保温时长', unit: '小时', type: 'number', group: 'identity', default: 2, min: 0, max: 12, step: 0.5 },
+    ],
+    presets: {
+      key: 'power',
+      items: [
+        { label: '迷你1-2人 500W', value: 500 },
+        { label: '3-4L 700W', value: 700 },
+        { label: '5L大容量 900W', value: 900 },
+      ], unit: '',
+    },
+  },
+
+  /* ---------- 微波炉（短时大功率） ---------- */
+  microwave: {
+    id: 'microwave', name: '微波炉', icon: '🍲', model: 'constant_power',
+    desc: '单次几分钟，总耗电取决于加热次数与时长', ringMax: 15,
+    fields: [
+      { key: 'power', label: '微波功率', unit: 'W', type: 'number', group: 'usage', default: 1000, min: 300, step: 100 },
+      { key: 'hours', label: '每天累计使用', unit: '小时', type: 'number', group: 'usage', default: 0.3, min: 0, max: 4, step: 0.1 },
+      { key: 'days', label: '每月使用天数', unit: '天', type: 'number', group: 'usage', default: 30, min: 0, max: 31, step: 1 },
+      { key: 'qty', label: '数量', unit: '台', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
+      { key: 'standby', label: '待机功率', unit: 'W', type: 'number', group: 'identity', default: 2, min: 0, step: 0.5,
+        tip: '带时钟显示的待机约 1-4W，不用时可断电' },
+    ],
+    presets: {
+      key: 'power',
+      items: [700, 800, 1000, 1200], unit: 'W',
+    },
+  },
+
+  /* ---------- 吹风机（短时大功率） ---------- */
+  hairdryer: {
+    id: 'hairdryer', name: '吹风机', icon: '💨', model: 'constant_power',
+    desc: '瞬时功率大但单次仅几分钟，月总耗电不大', ringMax: 10,
+    fields: [
+      { key: 'power', label: '额定功率', unit: 'W', type: 'number', group: 'usage', default: 1600, min: 400, step: 100 },
+      { key: 'hours', label: '每天累计使用', unit: '小时', type: 'number', group: 'usage', default: 0.15, min: 0, max: 2, step: 0.05 },
+      { key: 'days', label: '每月使用天数', unit: '天', type: 'number', group: 'usage', default: 30, min: 0, max: 31, step: 1 },
+      { key: 'qty', label: '数量', unit: '把', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
+    ],
+    presets: {
+      key: 'power',
+      items: [1200, 1600, 2000, 2200], unit: 'W',
+    },
+  },
+
+  /* ---------- 电脑（台式/笔记本） ---------- */
+  computer: {
+    id: 'computer', name: '电脑', icon: '🖥️', model: 'constant_power',
+    desc: '笔记本远比台式省电；功率建议含显示器', ringMax: 60,
+    fields: [
+      { key: 'power', label: '整机功率', unit: 'W', type: 'number', group: 'usage', default: 150, min: 10, step: 10,
+        tip: '笔记本整机 30-65W；台式办公 150-250W；游戏主机 300-500W（含显示器另加 20-40W）' },
+      { key: 'hours', label: '每天使用', unit: '小时', type: 'number', group: 'usage', default: 4, min: 0, max: 24, step: 0.5 },
+      { key: 'days', label: '每月使用天数', unit: '天', type: 'number', group: 'usage', default: 26, min: 0, max: 31, step: 1 },
+      { key: 'qty', label: '数量', unit: '台', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
+      { key: 'standby', label: '关机待机功率', unit: 'W', type: 'number', group: 'identity', default: 5, min: 0, step: 1,
+        tip: '台式主机+显示器+外设待机约 3-10W，插排断电可为 0' },
+    ],
+    presets: {
+      key: 'power',
+      items: [
+        { label: '笔记本 65W', value: 65 },
+        { label: '台式办公 150W', value: 150 },
+        { label: '台式独显 300W', value: 300 },
+        { label: '游戏高配 450W', value: 450 },
+      ], unit: '',
+    },
+  },
+
+  /* ---------- 吸尘器（按周折算） ---------- */
+  vacuum: {
+    id: 'vacuum', name: '吸尘器', icon: '🧹', model: 'constant_power',
+    desc: '每次十几分钟，按实际打扫频率估算', ringMax: 10,
+    fields: [
+      { key: 'power', label: '额定功率', unit: 'W', type: 'number', group: 'usage', default: 1000, min: 100, step: 100 },
+      { key: 'hours', label: '每次使用', unit: '小时', type: 'number', group: 'usage', default: 0.3, min: 0, max: 2, step: 0.1 },
+      { key: 'days', label: '每月使用天数', unit: '天', type: 'number', group: 'usage', default: 8, min: 0, max: 31, step: 1 },
+      { key: 'qty', label: '数量', unit: '台', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
+    ],
+    presets: {
+      key: 'power',
+      items: [
+        { label: '手持/无线 400W', value: 400 },
+        { label: '卧式 1000W', value: 1000 },
+        { label: '大吸力 1600W', value: 1600 },
+      ], unit: '',
+    },
+  },
+
+  /* ---------- 抽油烟机 ---------- */
+  rangehood: {
+    id: 'rangehood', name: '抽油烟机', icon: '🍳', model: 'constant_power',
+    desc: '做饭期间开启，风档影响功耗', ringMax: 10,
+    fields: [
+      { key: 'power', label: '电机功率', unit: 'W', type: 'number', group: 'usage', default: 200, min: 50, step: 10 },
+      { key: 'hours', label: '每天开启', unit: '小时', type: 'number', group: 'usage', default: 1, min: 0, max: 8, step: 0.25 },
+      { key: 'days', label: '每月开火天数', unit: '天', type: 'number', group: 'usage', default: 30, min: 0, max: 31, step: 1 },
+      { key: 'qty', label: '数量', unit: '台', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
+    ],
+    presets: {
+      key: 'power',
+      items: [150, 200, 300], unit: 'W',
+    },
+  },
+
+  /* ---------- 即热热水器（短时大功率特例） ---------- */
+  wh_instant: {
+    id: 'wh_instant', name: '即热热水器', icon: '♨️', model: 'constant_power',
+    desc: '即开即热无保温损耗，但瞬时功率大、对电路要求高', ringMax: 200,
+    fields: [
+      { key: 'power', label: '额定功率', unit: 'W', type: 'number', group: 'usage', default: 5500, min: 2000, step: 500 },
+      { key: 'hours', label: '每天使用', unit: '小时', type: 'number', group: 'usage', default: 0.5, min: 0, max: 3, step: 0.1 },
+      { key: 'days', label: '每月使用天数', unit: '天', type: 'number', group: 'usage', default: 30, min: 0, max: 31, step: 1 },
+      { key: 'qty', label: '数量', unit: '台', type: 'number', group: 'usage', default: 1, min: 1, step: 1 },
+    ],
+    presets: {
+      key: 'power',
+      items: [3500, 5500, 7000], unit: 'W',
+    },
+  },
 };
 
-const DEVICE_ORDER = ['fan', 'ac', 'fridge', 'washer', 'wh_tank', 'lighting', 'tv', 'alwayson'];
+const DEVICE_ORDER = [
+  'fan', 'ac', 'fridge', 'washer', 'wh_tank',
+  'tv', 'computer', 'ricecooker', 'microwave', 'rangehood',
+  'hairdryer', 'vacuum', 'lighting', 'alwayson', 'wh_instant',
+];

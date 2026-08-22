@@ -2,7 +2,8 @@
  * 计算引擎 v2：按设备模型分派计算
  *
  * 模型（见 data.js 注释）：
- *   constant_power   E = P/1000 × hours×hourMul × days × qty
+ *   constant_power   E = P/1000 × hours×hourMul × days × qty (+ 待机/保温项)
+ *   gear_weighted    风扇多档位加权：Σ(档位系数×各档小时) 等效小时 + 待机项
  *   thermal_ac       ΔT 单变量 + 变频负荷随 ΔT 分段 + 围护/湿度/老化
  *   nameplate_daily  E = eDaily × 30 × qty
  *   cycle            E = cycles × (E_wash + dryFreq×dryKWh) × k_load
@@ -129,9 +130,26 @@ const Engine = {
       }
     }
 
+    if (dev.model === 'gear_weighted') {
+      const hH = num('hHigh');
+      const total = num('hLow') + num('hMid') + hH;
+      if (total > 0 && hH / total > 0.5) {
+        push('info', '🌀', '高速档使用占比过高', '多数场景中低速档已够用，风感更柔和，功耗也明显更低。');
+      }
+      if (num('standby') >= 2) {
+        push('info', '🔌', '待机功率偏高', '不用时断开电源或选带机械开关的插座，长期待机每月也有零点几度。');
+      }
+    }
+
+    if (dev.id === 'ricecooker' && num('warmHours') >= 4) {
+      const better = Engine.calc(dev, Object.assign({}, values, { warmHours: 1 })).kwh;
+      push('warn', '🍚', '保温时间较长', '保温功率虽小但持续时间长，饭后及时拔电源/转移饭盒，每月约省 ' +
+        (cur - better).toFixed(1) + ' kWh。');
+    }
+
     if (dev.model === 'constant_power' && dev.id === 'lighting') {
-      if (num('pAvg') >= 25) {
-        const better = Engine.calc(dev, Object.assign({}, values, { pAvg: 12 })).kwh;
+      if (num('power') >= 25) {
+        const better = Engine.calc(dev, Object.assign({}, values, { power: 12 })).kwh;
         push('warn', '💡', '仍有非 LED 光源', '全部换成 LED 后照明电量可降到 1/3 左右，每月约省 ' + (cur - better).toFixed(1) + ' kWh。');
       }
     }
@@ -150,10 +168,25 @@ const Engine = {
 
 /* ---------- 各模型的电量计算函数（不含 mode:'mul' 的通用因子） ---------- */
 const MODEL_FUNCS = {
-  /* 恒功率 */
+  /* 恒功率：可选待机（standby，作用于剩余时段）与保温（warmPower+warmHours） */
   constant_power(v, hm) {
-    return (Number(v.power) / 1000) * (Number(v.hours) || 0) * hm *
-      (Number(v.days) || 0) * (Number(v.qty) || 1);
+    const hours = Number(v.hours) || 0;
+    const warmH = Math.min(Number(v.warmHours) || 0, Math.max(24 - hours, 0));
+    const rest = Math.max(24 - hours - warmH, 0);
+    const e = (Number(v.power) / 1000) * hours * hm
+      + (Number(v.warmPower) || 0) / 1000 * warmH
+      + (Number(v.standby) || 0) / 1000 * rest;
+    return e * (Number(v.days) || 0) * (Number(v.qty) || 1);
+  },
+
+  /* 风扇多档位加权：额定功率为高速档基准，按各档时长加权 */
+  gear_weighted(v, hm) {
+    const hL = Number(v.hLow) || 0, hM = Number(v.hMid) || 0, hH = Number(v.hHigh) || 0;
+    const effHours = hL * 0.45 + hM * 0.7 + hH * 1.0; // 档位功率比取自实测参考
+    const rest = Math.max(24 - (hL + hM + hH), 0);
+    const e = (Number(v.power) / 1000) * effHours * hm
+      + (Number(v.standby) || 0) / 1000 * rest;
+    return e * (Number(v.days) || 0) * (Number(v.qty) || 1);
   },
 
   /* 常开低功率 */
