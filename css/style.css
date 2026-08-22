@@ -248,3 +248,16 @@ body {
   font-size: 13px; font-weight: 700; padding: 4px 10px; margin-left: 8px;
 }
 .record__info .sub { color: var(--muted); }
+
+/* 全屋诊断：排名条 */
+.rank-list { display: flex; flex-direction: column; gap: 12px; }
+.rank-row {
+  background: var(--card); border-radius: 12px; padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+.rank-head { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 8px; }
+.rank-head b { color: var(--green-d); }
+.rank-bar { height: 8px; background: #eef2f5; border-radius: 999px; overflow: hidden; }
+.rank-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--green), var(--blue)); border-radius: 999px; transition: width .5s ease; }
+.rank-save { margin-top: 6px; font-size: 12px; color: var(--warn); }
+.tip__dev { display: inline-block; font-size: 11px; color: var(--blue); background: rgba(59,130,246,.08); border-radius: 6px; padding: 1px 8px; margin-bottom: 4px; }

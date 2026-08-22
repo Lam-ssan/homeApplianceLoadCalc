@@ -83,6 +83,33 @@
         <div class="tips" id="tips"><!-- JS 渲染 --></div>
       </section>
 
+      <!-- 视图：全屋诊断（诊断 Tab） -->
+      <section class="view" id="view-house">
+        <button class="back-btn" id="houseBack">‹ 返回设备</button>
+        <div class="summary" id="houseSummary">
+          <div class="summary__item">
+            <span class="muted">设备台数</span>
+            <b><span id="hsCount">0</span> 台</b>
+          </div>
+          <div class="summary__item">
+            <span class="muted">月用电合计</span>
+            <b><span id="hsKwh">0.0</span> kWh</b>
+            <span class="muted" style="font-size:12px">约 ¥<span id="hsCost">0.00</span>/月</span>
+          </div>
+          <div class="summary__item">
+            <span class="muted">省电潜力</span>
+            <b>¥<span id="hsSave">0.0</span></b>
+            <span class="muted" style="font-size:12px">每月可省（估算）</span>
+          </div>
+        </div>
+
+        <h3 class="section-sub">用电排名</h3>
+        <div class="rank-list" id="houseRank"><!-- JS 渲染 --></div>
+
+        <h3 class="section-sub">全屋节能建议</h3>
+        <div class="tips" id="houseTips"><!-- JS 渲染 --></div>
+      </section>
+
       <!-- 视图：我的设备（聚类 + 下钻） -->
       <section class="view" id="view-owned">
         <button class="back-btn" id="ownedBack" style="display:none">‹ 返回</button>
@@ -108,7 +135,7 @@
     <nav class="tabbar">
       <button class="tab tab--active" data-view="view-home"><span>📱</span>设备</button>
       <button class="tab" data-view="view-owned"><span>📦</span>我的设备<span class="badge" id="ownBadge" hidden>0</span></button>
-      <button class="tab" data-view="view-result"><span>🩺</span>诊断</button>
+      <button class="tab" data-view="view-house"><span>🩺</span>诊断</button>
     </nav>
   </div>
 
