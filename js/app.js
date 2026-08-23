@@ -387,8 +387,30 @@
     showView('view-owned');
   }
 
-  function removeInstance(iid) {
-    if (!confirm('确定删除这台设备？')) return;
+  /* ---------- 自定义确认弹窗 ---------- */
+  function appConfirm(msg, okText) {
+    return new Promise(resolve => {
+      const modal = $('#confirmModal');
+      $('#confirmText').textContent = msg;
+      $('#confirmOk').textContent = okText || '确定';
+      modal.hidden = false;
+      const done = val => {
+        modal.hidden = true;
+        $('#confirmOk').removeEventListener('click', onOk);
+        $('#confirmCancel').removeEventListener('click', onCancel);
+        $('.modal__mask', modal).removeEventListener('click', onCancel);
+        resolve(val);
+      };
+      const onOk = () => done(true);
+      const onCancel = () => done(false);
+      $('#confirmOk').addEventListener('click', onOk);
+      $('#confirmCancel').addEventListener('click', onCancel);
+      $('.modal__mask', modal).addEventListener('click', onCancel);
+    });
+  }
+
+  async function removeInstance(iid) {
+    if (!(await appConfirm('确定删除这台设备？', '删除'))) return;
     saveInst(loadInst().filter(x => x.iid !== iid));
     renderOwned();
     renderHome();
