@@ -2,49 +2,52 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#10b981" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2b7fff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>家庭用电智能诊断器</title>
   <link rel="stylesheet" href="css/style.css" />
+  <script>
+    if (sessionStorage.getItem('hldc_entered')) document.documentElement.classList.add('entered');
+  </script>
 </head>
 <body>
+  <div id="splash" class="splash" role="dialog" aria-label="欢迎页">
+    <img class="splash__img" src="img/first_in.png" alt="家庭用电智能诊断器" />
+    <div class="splash__bar">
+      <button type="button" class="btn-primary splash__cta" id="btnEnter">开始测算</button>
+    </div>
+  </div>
+
   <div id="app">
-    <!-- 顶部标题栏 -->
     <header class="app-bar">
-      <div class="app-bar__title" id="appTitle">家庭用电智能诊断器</div>
-      <div class="app-bar__sub" id="appSub">家用电器负荷计算</div>
+      <button type="button" class="app-bar__back" id="appBack" hidden aria-label="返回">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="app-bar__text">
+        <div class="app-bar__title" id="appTitle">家庭用电智能诊断器</div>
+        <div class="app-bar__sub" id="appSub">选择家电，测算月用电</div>
+      </div>
     </header>
 
     <main class="view-host">
-      <!-- 视图：设备选择（首页） -->
       <section class="view view--active" id="view-home">
-        <div class="hero">
-          <div class="hero__icon">⚡</div>
-          <div class="hero__text">
-            <h1>用电负荷测算</h1>
-            <p>选择家用电器，智能测算月用电量并给出节能诊断</p>
-          </div>
-        </div>
-        <h2 class="section-title">选择设备</h2>
-        <div class="device-grid" id="deviceGrid"><!-- JS 渲染 --></div>
+        <button type="button" class="home-stats" id="homeStats" hidden></button>
+        <div id="deviceCats"></div>
       </section>
 
-      <!-- 视图：设备计算页 -->
       <section class="view" id="view-calc">
-        <button class="back-btn" id="calcBack">‹ 返回设备</button>
         <div class="device-head">
           <div class="device-head__icon" id="calcIcon">🌀</div>
-          <div>
+          <div class="device-head__text">
             <h2 id="calcName">电风扇</h2>
             <p id="calcDesc" class="muted"></p>
           </div>
         </div>
-
-        <div class="presets" id="presets"><!-- 预设功率 --></div>
-
-        <form id="calcForm"><!-- JS 渲染分区表单 --></form>
-
-        <!-- 底部结算条 -->
+        <div class="presets" id="presets"></div>
+        <form id="calcForm"></form>
         <div class="result-bar">
           <div class="result-bar__main">
             <div class="result-bar__kwh">
@@ -53,17 +56,16 @@
             <div class="result-bar__cost">约 <span id="rCost">0.00</span> 元/月</div>
           </div>
           <div class="result-bar__actions">
-            <button class="btn-primary btn-sm" id="btnAdd">添加设备</button>
+            <button type="button" class="btn-outline btn-sm" id="btnDiagnose">节能诊断</button>
+            <button type="button" class="btn-primary btn-sm" id="btnAdd">添加设备</button>
           </div>
         </div>
       </section>
 
-      <!-- 视图：诊断结果 -->
       <section class="view" id="view-result">
-        <button class="back-btn" id="resultBack">‹ 返回</button>
         <div class="result-card">
           <div class="ring" id="ring">
-            <svg viewBox="0 0 120 120">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
               <circle class="ring__bg" cx="60" cy="60" r="52"></circle>
               <circle class="ring__fg" id="ringFg" cx="60" cy="60" r="52"></circle>
             </svg>
@@ -78,14 +80,12 @@
             <div><span class="muted">省电潜力</span><b id="resSaving">0.00 元</b></div>
           </div>
         </div>
-
         <h2 class="section-title">节能诊断建议</h2>
-        <div class="tips" id="tips"><!-- JS 渲染 --></div>
+        <div class="tips" id="tips"></div>
+        <button type="button" class="btn-primary btn-block" id="btnAddFromResult">加入我的设备</button>
       </section>
 
-      <!-- 视图：全屋诊断（诊断 Tab） -->
       <section class="view" id="view-house">
-        <button class="back-btn" id="houseBack">‹ 返回设备</button>
         <div class="summary" id="houseSummary">
           <div class="summary__item">
             <span class="muted">设备台数</span>
@@ -94,26 +94,21 @@
           <div class="summary__item">
             <span class="muted">月用电合计</span>
             <b><span id="hsKwh">0.0</span> kWh</b>
-            <span class="muted" style="font-size:12px">约 ¥<span id="hsCost">0.00</span>/月</span>
+            <span class="muted summary__hint">约 ¥<span id="hsCost">0.00</span>/月</span>
           </div>
           <div class="summary__item">
             <span class="muted">省电潜力</span>
             <b>¥<span id="hsSave">0.0</span></b>
-            <span class="muted" style="font-size:12px">每月可省（估算）</span>
+            <span class="muted summary__hint">每月可省（估算）</span>
           </div>
         </div>
-
         <h3 class="section-sub">用电排名</h3>
-        <div class="rank-list" id="houseRank"><!-- JS 渲染 --></div>
-
+        <div class="rank-list" id="houseRank"></div>
         <h3 class="section-sub">全屋节能建议</h3>
-        <div class="tips" id="houseTips"><!-- JS 渲染 --></div>
+        <div class="tips" id="houseTips"></div>
       </section>
 
-      <!-- 视图：我的设备（聚类 + 下钻） -->
       <section class="view" id="view-owned">
-        <button class="back-btn" id="ownedBack" style="display:none">‹ 返回</button>
-        <h2 class="section-title" id="ownedTitle">我的设备</h2>
         <div class="summary" id="ownedSummary">
           <div class="summary__item">
             <span class="muted">设备总台数</span>
@@ -122,20 +117,29 @@
           <div class="summary__item">
             <span class="muted">月用电合计</span>
             <b><span id="ownKwh">0.0</span> kWh</b>
-            <span class="muted" style="font-size:12px">约 ¥<span id="ownCost">0.00</span>/月</span>
+            <span class="muted summary__hint">约 ¥<span id="ownCost">0.00</span>/月</span>
           </div>
         </div>
-        <h3 class="section-sub" id="ownedSub">按类型聚类，点击进入查看每台</h3>
-        <div class="record-list" id="ownedList"><!-- JS 渲染 --></div>
-        <button class="btn-ghost" id="btnClearOwned">清空全部</button>
+        <h3 class="section-sub" id="ownedSub">按类型查看，点进去可编辑每台</h3>
+        <div class="record-list" id="ownedList"></div>
+        <button type="button" class="btn-ghost" id="btnClearOwned">继续添加设备</button>
       </section>
     </main>
 
-    <!-- 底部导航 -->
-    <nav class="tabbar">
-      <button class="tab tab--active" data-view="view-home"><span>📱</span>设备</button>
-      <button class="tab" data-view="view-owned"><span>📦</span>我的设备<span class="badge" id="ownBadge" hidden>0</span></button>
-      <button class="tab" data-view="view-house"><span>🩺</span>诊断</button>
+    <nav class="tabbar" aria-label="主导航">
+      <button type="button" class="tab tab--active" data-view="view-home">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/></svg>
+        设备
+      </button>
+      <button type="button" class="tab" data-view="view-owned">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9.5z"/><path d="M9 21v-8h6v8"/></svg>
+        我的
+        <span class="badge" id="ownBadge" hidden>0</span>
+      </button>
+      <button type="button" class="tab" data-view="view-house">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14c2.5-4 5-6 8-6s5.5 2 8 6"/><circle cx="12" cy="14" r="2.2"/><path d="M12 4v2"/></svg>
+        诊断
+      </button>
     </nav>
   </div>
 

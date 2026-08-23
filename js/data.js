@@ -461,3 +461,11 @@ const DEVICE_ORDER = [
   'tv', 'computer', 'ricecooker', 'microwave', 'rangehood',
   'hairdryer', 'vacuum', 'lighting', 'alwayson', 'wh_instant',
 ];
+
+const DEVICE_CATS = [
+  { id: 'climate', name: '制冷与环境', ids: ['fan', 'ac', 'fridge'] },
+  { id: 'water', name: '热水与洗衣', ids: ['washer', 'wh_tank', 'wh_instant'] },
+  { id: 'kitchen', name: '厨房', ids: ['ricecooker', 'microwave', 'rangehood'] },
+  { id: 'life', name: '生活娱乐', ids: ['tv', 'computer', 'hairdryer', 'vacuum', 'lighting'] },
+  { id: 'always', name: '常开设备', ids: ['alwayson'] },
+];

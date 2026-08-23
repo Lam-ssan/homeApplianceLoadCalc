@@ -28,35 +28,85 @@
   function saveInst(arr) { localStorage.setItem(STORE_INST, JSON.stringify(arr)); }
   function genIid(type) { return type + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000); }
 
+  const VIEW_META = {
+    'view-home': ['家庭用电智能诊断器', '选择家电，测算月用电'],
+    'view-calc': ['用电测算', '填写参数，实时估算'],
+    'view-result': ['节能诊断', '基于模型的用电分析'],
+    'view-owned': ['我的设备', '按类型查看，点进去可编辑'],
+    'view-house': ['全屋诊断', '汇总所有已添加设备'],
+  };
+
+  function syncChrome(id) {
+    const isSub = id === 'view-calc' || id === 'view-result';
+    $('#app').classList.toggle('is-subpage', isSub);
+    const needBack = isSub || (id === 'view-owned' && !!detailType);
+    $('#appBack').hidden = !needBack;
+  }
+
   /* ---------- 视图切换 ---------- */
   function showView(id) {
     $$('.view').forEach(v => v.classList.remove('view--active'));
     $('#' + id).classList.add('view--active');
-    const map = {
-      'view-home': ['家庭用电智能诊断器', '家用电器负荷计算'],
-      'view-calc': ['用电测算', '填写参数，实时估算'],
-      'view-result': ['节能诊断', '基于模型的用电分析'],
-      'view-owned': ['我的设备', '已选设备与数量'],
-      'view-house': ['全屋诊断', '汇总所有已添加设备'],
-    };
-    if (map[id]) { $('#appTitle').textContent = map[id][0]; $('#appSub').textContent = map[id][1]; }
+    if (VIEW_META[id]) {
+      $('#appTitle').textContent = VIEW_META[id][0];
+      $('#appSub').textContent = VIEW_META[id][1];
+    }
     $$('.tab').forEach(t => t.classList.toggle('tab--active', t.dataset.view === id));
+    syncChrome(id);
     window.scrollTo(0, 0);
   }
 
   /* ---------- 设备选择首页 ---------- */
   function renderHome() {
-    const grid = $('#deviceGrid');
-    grid.innerHTML = '';
-    DEVICE_ORDER.forEach(id => {
-      const d = DEVICES[id];
-      const el = document.createElement('div');
-      el.className = 'device' + (d.demo ? ' device--on' : '');
-      el.innerHTML = `<div class="device__icon">${d.icon}</div>
-        <div class="device__name">${d.name}</div>
-        <div class="device__tag">${d.model === 'hot_water' || d.model === 'always_on' ? '新' : '可测算'}</div>`;
-      el.addEventListener('click', () => openDevice(id));
-      grid.appendChild(el);
+    const arr = loadInst();
+    const stats = $('#homeStats');
+    if (arr.length) {
+      let kwh = 0;
+      arr.forEach(it => {
+        if (DEVICES[it.type]) kwh += Engine.calc(DEVICES[it.type], it.config).kwh;
+      });
+      stats.hidden = false;
+      stats.innerHTML = `
+        <div class="home-stats__nums">
+          <div><b>${arr.length}</b><span>台设备</span></div>
+          <div><b>${kwh.toFixed(0)}</b><span>kWh/月</span></div>
+          <div><b>${(kwh * APP_CONFIG.price).toFixed(0)}</b><span>元/月</span></div>
+        </div>
+        <div class="home-stats__go">全屋诊断</div>`;
+    } else {
+      stats.hidden = true;
+      stats.innerHTML = '';
+    }
+
+    const counts = {};
+    arr.forEach(it => { counts[it.type] = (counts[it.type] || 0) + 1; });
+
+    const host = $('#deviceCats');
+    host.innerHTML = '';
+    DEVICE_CATS.forEach(cat => {
+      const sec = document.createElement('section');
+      sec.className = 'cat';
+      const h = document.createElement('h2');
+      h.className = 'section-title';
+      h.textContent = cat.name;
+      const grid = document.createElement('div');
+      grid.className = 'device-grid';
+      cat.ids.forEach(id => {
+        const d = DEVICES[id];
+        if (!d) return;
+        const n = counts[id] || 0;
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'device' + (n ? ' device--added' : '');
+        el.innerHTML = `<div class="device__icon">${d.icon}</div>
+          <div class="device__name">${d.name}</div>
+          ${n ? `<div class="device__tag device__tag--on">已有 ${n} 台</div>` : ''}`;
+        el.addEventListener('click', () => openDevice(id));
+        grid.appendChild(el);
+      });
+      sec.appendChild(h);
+      sec.appendChild(grid);
+      host.appendChild(sec);
     });
   }
 
@@ -77,7 +127,6 @@
     $('#calcDesc').textContent = dev.desc;
     $('#btnAdd').textContent = iid ? '保存修改' : '添加设备';
 
-    // 通用预设（目标字段由 presets.key 指定）
     const presets = $('#presets');
     presets.innerHTML = '';
     const ps = dev.presets;
@@ -99,14 +148,16 @@
         });
         presets.appendChild(b);
       });
+      presets.style.display = '';
     } else {
       presets.style.display = 'none';
     }
-    if (ps && ps.items && ps.items.length) presets.style.display = '';
 
     renderForm(dev);
     live();
     showView('view-calc');
+    $('#appTitle').textContent = dev.name;
+    $('#appSub').textContent = iid ? '修改参数并保存' : '填写参数，实时估算';
   }
 
   /* ---------- 渲染表单（按 group 分卡片） ---------- */
@@ -115,13 +166,12 @@
     form.innerHTML = '';
 
     const GROUP_TITLES = {
-      usage: '⚙️ 使用情况',
-      identity: '🏷️ 设备信息',
-      behavior: '🎛️ 使用习惯（可优化）',
-      env: '🌤️ 环境与建筑（短期难改）',
+      usage: '使用情况',
+      identity: '设备信息',
+      behavior: '使用习惯（可优化）',
+      env: '环境与建筑（短期难改）',
     };
 
-    // 保持首次出现顺序分组
     const order = [];
     const groups = {};
     dev.fields.forEach(f => {
@@ -130,20 +180,23 @@
     });
 
     order.forEach(g => {
-      const c = card(GROUP_TITLES[g] || g);
+      const fold = g === 'env';
+      const c = fold ? document.createElement('details') : document.createElement('div');
+      c.className = fold ? 'card card--fold' : 'card';
+      if (fold) {
+        const h = document.createElement('summary');
+        h.className = 'card__title';
+        h.textContent = GROUP_TITLES[g] || g;
+        c.appendChild(h);
+      } else {
+        const h = document.createElement('div');
+        h.className = 'card__title';
+        h.textContent = GROUP_TITLES[g] || g;
+        c.appendChild(h);
+      }
       groups[g].forEach(f => c.appendChild(f.type === 'number' ? numField(f) : selectField(f)));
       form.appendChild(c);
     });
-  }
-
-  function card(title) {
-    const c = document.createElement('div');
-    c.className = 'card';
-    const h = document.createElement('div');
-    h.className = 'card__title';
-    h.textContent = title;
-    c.appendChild(h);
-    return c;
   }
 
   function numField(f) {
@@ -154,7 +207,8 @@
         <input class="input" id="f_${f.key}" type="number" inputmode="decimal" value="${values[f.key] != null ? values[f.key] : f.default}"
           min="${f.min != null ? f.min : ''}" max="${f.max != null ? f.max : ''}" step="${f.step || 1}" />
         ${f.unit ? `<span class="field__suffix">${f.unit}</span>` : ''}
-      </div>`;
+      </div>
+      ${f.tip ? `<p class="field__tip">${f.tip}</p>` : ''}`;
     wrap.querySelector('input').addEventListener('input', e => {
       values[f.key] = e.target.value;
       if (f.key === 'power') $$('.preset').forEach(x => x.classList.remove('preset--active'));
@@ -168,9 +222,10 @@
     wrap.className = 'field';
     const cur = values[f.key] != null ? Number(values[f.key]) : f.default;
     const opts = f.options.map(o =>
-      `<option value="${o.value}" ${o.value === cur ? 'selected' : ''}>${o.label}</option>`).join('');
+      `<option value="${o.value}" ${o.value === cur ? 'selected' : ''}${o.tip ? ` title="${o.tip}"` : ''}>${o.label}</option>`).join('');
     wrap.innerHTML = `<label class="field__label" for="f_${f.key}">${f.label}</label>
-      <select class="select" id="f_${f.key}">${opts}</select>`;
+      <select class="select" id="f_${f.key}">${opts}</select>
+      ${f.tip ? `<p class="field__tip">${f.tip}</p>` : ''}`;
     wrap.querySelector('select').addEventListener('change', e => {
       values[f.key] = e.target.value;
       live();
@@ -215,8 +270,13 @@
       const arr = loadInst();
       const inst = arr.find(x => x.iid === currentIid);
       if (inst) { inst.config = Object.assign({}, values); saveInst(arr); }
+      $('#btnAddFromResult').hidden = true;
+    } else {
+      $('#btnAddFromResult').hidden = false;
+      $('#btnAddFromResult').textContent = '加入我的设备';
     }
     showView('view-result');
+    $('#appTitle').textContent = dev.name + ' · 诊断';
   }
 
   /* ---------- 全屋诊断（诊断 Tab） ---------- */
@@ -225,15 +285,22 @@
     const summary = $('#houseSummary');
     const rankBox = $('#houseRank');
     const tipBox = $('#houseTips');
+    $('#view-house').classList.toggle('is-empty', arr.length === 0);
 
     if (arr.length === 0) {
       summary.style.display = 'none';
-      rankBox.innerHTML = '<div class="empty">还没添加设备。先去「设备」添加家电，再回来看全屋用电分析～</div>';
+      rankBox.innerHTML = `<div class="empty">
+        <div class="empty__art">🏠</div>
+        <b>还没有设备</b>
+        <p>先添加家电，再看全屋用电分析</p>
+        <button type="button" class="btn-primary" id="btnEmptyToHome">去添加设备</button>
+      </div>`;
       tipBox.innerHTML = '';
+      const go = $('#btnEmptyToHome');
+      if (go) go.addEventListener('click', () => { renderHome(); showView('view-home'); });
       return;
     }
 
-    // 逐实例计算并排名
     const rows = [];
     let totalKwh = 0, totalSave = 0;
     arr.forEach(it => {
@@ -243,7 +310,7 @@
       const best = Engine.bestKwh(dev, it.config);
       const save = Math.max(0, kwh - best);
       totalKwh += kwh; totalSave += save;
-      rows.push({ dev, kwh, save, count: 1 });
+      rows.push({ dev, kwh, save, config: it.config });
     });
 
     summary.style.display = '';
@@ -270,11 +337,9 @@
       rankBox.appendChild(el);
     });
 
-    // 聚合建议：warn/danger 优先，每台最多取前2条，总量限10条
     const all = [];
     rows.forEach(r => {
-      const inst = arr.find(x => x.type === r.dev.id);
-      const tips = Engine.diagnose(r.dev, inst ? inst.config : Engine.defaults(r.dev))
+      const tips = Engine.diagnose(r.dev, r.config)
         .filter(t => t.level !== 'info' || t.title !== '当前设置较优');
       tips.slice(0, 2).forEach(t => all.push({ dev: r.dev, t }));
     });
@@ -318,12 +383,15 @@
       detailType = null;
     }
     renderOwned();
+    renderHome();
     showView('view-owned');
   }
 
   function removeInstance(iid) {
+    if (!confirm('确定删除这台设备？')) return;
     saveInst(loadInst().filter(x => x.iid !== iid));
     renderOwned();
+    renderHome();
   }
 
   function renderOwned() {
@@ -341,14 +409,15 @@
     else { badge.hidden = true; }
 
     if (detailType) {
-      $('#ownedBack').style.display = '';
-      $('#ownedTitle').textContent = DEVICES[detailType].name + '（' + arr.filter(x => x.type === detailType).length + '）';
-      $('#ownedSub').textContent = '每台可独立编辑或删除';
       $('#ownedSummary').style.display = 'none';
-      $('#btnClearOwned').textContent = '返回上级';
+      $('#btnClearOwned').style.display = 'none';
+      $('#appTitle').textContent = DEVICES[detailType].name;
+      $('#appSub').textContent = '每台可独立编辑或删除';
+      $('#ownedSub').textContent = '点击条目可修改参数';
+      $('#appBack').hidden = false;
       const list = arr.filter(x => x.type === detailType);
       if (list.length === 0) {
-        box.innerHTML = '<div class="empty">该类型暂无设备</div>';
+        box.innerHTML = '<div class="empty"><div class="empty__art">📭</div><b>该类型暂无设备</b></div>';
       } else {
         list.forEach((it, idx) => {
           const k = Engine.calc(DEVICES[it.type], it.config).kwh;
@@ -369,16 +438,26 @@
         });
       }
     } else {
-      $('#ownedBack').style.display = 'none';
-      $('#ownedTitle').textContent = '我的设备';
-      $('#ownedSub').textContent = '按类型聚类，点击进入查看每台';
       $('#ownedSummary').style.display = '';
-      $('#btnClearOwned').textContent = '继续添加';
+      $('#btnClearOwned').style.display = '';
+      $('#btnClearOwned').textContent = '继续添加设备';
+      $('#appTitle').textContent = '我的设备';
+      $('#appSub').textContent = '按类型查看，点进去可编辑';
+      $('#ownedSub').textContent = '按类型查看，点进去可编辑每台';
+      $('#appBack').hidden = true;
       const groups = {};
       arr.forEach(it => { if (DEVICES[it.type]) (groups[it.type] = groups[it.type] || []).push(it); });
       const ids = Object.keys(groups);
       if (ids.length === 0) {
-        box.innerHTML = '<div class="empty">还没添加设备，去“设备”选择家电吧～</div>';
+        box.innerHTML = `<div class="empty">
+          <div class="empty__art">📦</div>
+          <b>还没有添加设备</b>
+          <p>去「设备」选择家电，测算后再加进来</p>
+          <button type="button" class="btn-primary" id="btnEmptyOwned">去添加设备</button>
+        </div>`;
+        $('#btnClearOwned').style.display = 'none';
+        const go = $('#btnEmptyOwned');
+        if (go) go.addEventListener('click', () => { renderHome(); showView('view-home'); });
       } else {
         ids.forEach(id => {
           const list = groups[id];
@@ -407,28 +486,60 @@
     toastTimer = setTimeout(() => t.classList.remove('toast--show'), 1500);
   }
 
+  function enterApp() {
+    sessionStorage.setItem('hldc_entered', '1');
+    const splash = $('#splash');
+    splash.classList.add('splash--out');
+    setTimeout(() => {
+      document.documentElement.classList.add('entered');
+      splash.hidden = true;
+    }, 360);
+  }
+
   /* ---------- 事件绑定 ---------- */
   function bind() {
     $$('.tab').forEach(t => t.addEventListener('click', () => {
       const v = t.dataset.view;
       if (v === 'view-owned') { detailType = null; renderOwned(); }
       else if (v === 'view-house') { renderHouse(); }
+      else if (v === 'view-home') { renderHome(); }
       showView(v);
     }));
-    $('#calcBack').addEventListener('click', () => showView('view-home'));
-    $('#resultBack').addEventListener('click', () => showView('view-calc'));
-    $('#houseBack').addEventListener('click', () => showView('view-home'));
+    $('#appBack').addEventListener('click', () => {
+      const active = $('.view--active').id;
+      if (active === 'view-calc') { renderHome(); showView('view-home'); }
+      else if (active === 'view-result') {
+        showView('view-calc');
+        if (currentId && DEVICES[currentId]) {
+          $('#appTitle').textContent = DEVICES[currentId].name;
+          $('#appSub').textContent = currentIid ? '修改参数并保存' : '填写参数，实时估算';
+        }
+      }
+      else if (active === 'view-owned' && detailType) { detailType = null; renderOwned(); }
+    });
     $('#btnAdd').addEventListener('click', onAddOrSave);
-    $('#ownedBack').addEventListener('click', () => { detailType = null; renderOwned(); });
+    $('#btnDiagnose').addEventListener('click', diagnose);
+    $('#btnAddFromResult').addEventListener('click', onAddOrSave);
     $('#btnClearOwned').addEventListener('click', () => {
       if (detailType) { detailType = null; renderOwned(); return; }
+      renderHome();
       showView('view-home');
     });
+    $('#homeStats').addEventListener('click', () => {
+      renderHouse();
+      showView('view-house');
+    });
+    $('#btnEnter').addEventListener('click', enterApp);
   }
 
   /* ---------- 启动 ---------- */
   migrate();
   renderHome();
+  renderOwned();
   bind();
   showView('view-home');
+  if (document.documentElement.classList.contains('entered')) {
+    const splash = $('#splash');
+    if (splash) splash.hidden = true;
+  }
 })();
