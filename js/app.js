@@ -423,6 +423,7 @@
   async function removeInstance(iid) {
     if (!(await appConfirm('确定删除这台设备？', '删除'))) return;
     saveInst(loadInst().filter(x => x.iid !== iid));
+    if (detailType && !loadInst().some(x => x.type === detailType)) detailType = null;
     renderOwned();
     renderHome();
   }
