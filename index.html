@@ -162,7 +162,7 @@
       <div class="tariff-tabs">
         <button type="button" class="tariff-tab is-active" data-type="ladder">阶梯电价<br>（非分时）</button>
         <button type="button" class="tariff-tab" data-type="combined">居民合表电价</button>
-        <button type="button" class="tariff-tab" data-type="business">商业电价</button>
+        <button type="button" class="tariff-tab" data-type="business">工商业电价</button>
       </div>
 
       <div class="tariff-panel" data-panel="ladder">
@@ -181,7 +181,10 @@
       </div>
 
       <div class="tariff-panel" data-panel="business" hidden>
-        <p class="modal__hint">商业电价计算即将上线，敬请期待。</p>
+        <div class="region region--static is-active">
+          <span class="region__name">工商业不满1千伏</span>
+          <span class="region__price">¥0.664/度</span>
+        </div>
       </div>
 
       <div class="modal__actions">

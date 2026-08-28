@@ -583,7 +583,7 @@
         else price = '一档¥' + t.ladder.summer[0].price.toFixed(3) +
           ' · 二档¥' + t.ladder.summer[1].price.toFixed(3) +
           ' · 三档¥' + t.ladder.summer[2].price.toFixed(3);
-        return `<button type="button" class="region${type === 'business' ? ' region--disabled' : ''}" data-region="${rk}">
+        return `<button type="button" class="region" data-region="${rk}">
                   <span class="region__name">${t.name}</span>
                   <span class="region__price">${price}</span>
                 </button>`;
@@ -627,7 +627,6 @@
     ['ladder', 'combined', 'business'].forEach(type => {
       const list = $('#' + capPanel(type));
       if (list) list.addEventListener('click', e => {
-        if (type === 'business') { toast('商业电价计算即将上线'); return; }
         const btn = e.target.closest('.region');
         if (!btn) return;
         draftTariff.region = btn.dataset.region;
@@ -638,7 +637,6 @@
     $('#priceCancel').addEventListener('click', () => { priceModal.hidden = true; });
     priceModal.querySelector('.modal__mask').addEventListener('click', () => { priceModal.hidden = true; });
     $('#priceSave').addEventListener('click', () => {
-      if (draftTariff.type === 'business') { toast('商业电价计算即将上线'); priceModal.hidden = true; return; }
       try { localStorage.setItem('hldc_tariff', JSON.stringify(draftTariff)); } catch (e) {}
       priceModal.hidden = true;
       refreshPrices();

@@ -25,7 +25,8 @@ const APP_CONFIG = {
  * 电价体系：清远居民阶梯电价（非分时）+ 合表电价
  * 数据来源：清远本地宝《清远市电价价目表（最新）》（南方电网，2025-05）
  *   分→元换算（如 59.886875 分/千瓦时 = 0.59886875 元/kWh）
- *   ladder 阶梯按户按月分段；combined 合表平段价不分档；business 商业暂未实现
+ *   ladder 阶梯按户按月分段；combined 合表平段价不分档；business 商业平段价（不分档）
+ * 商业电价：66.446875 分/千瓦时 = 0.66446875 元/kWh（清远工商业平段统一价）
  * 阈值：夏季(5-10月) 0-260 / 261-600 / 601+；非夏季 0-200 / 201-400 / 401+
  * ============================================================ */
 const TARIFFS = {
@@ -37,6 +38,7 @@ const TARIFFS = {
       winter: [ { upTo: 200, price: 0.59886875 }, { upTo: 400, price: 0.64886875 }, { upTo: Infinity, price: 0.89886875 } ],
     },
     combined: 0.63586875,
+    business: 0.66446875,
   },
   qy_ls: {  // 连山县
     name: '连山县', short: '连山',
@@ -45,6 +47,7 @@ const TARIFFS = {
       winter: [ { upTo: 200, price: 0.56086875 }, { upTo: 400, price: 0.61086875 }, { upTo: Infinity, price: 0.86086875 } ],
     },
     combined: 0.59786875,
+    business: 0.66446875,
   },
   qy_ln: {  // 连南县
     name: '连南县', short: '连南',
@@ -53,6 +56,7 @@ const TARIFFS = {
       winter: [ { upTo: 200, price: 0.56086875 }, { upTo: 400, price: 0.61086875 }, { upTo: Infinity, price: 0.86086875 } ],
     },
     combined: 0.59786875,
+    business: 0.66446875,
   },
   qy_lz: {  // 连州市
     name: '连州市', short: '连州',
@@ -61,6 +65,7 @@ const TARIFFS = {
       winter: [ { upTo: 200, price: 0.59116875 }, { upTo: 400, price: 0.64116875 }, { upTo: Infinity, price: 0.89116875 } ],
     },
     combined: 0.62816875,
+    business: 0.66446875,
   },
 };
 
@@ -78,7 +83,7 @@ function getTariffCfg() {
     const v = JSON.parse(localStorage.getItem('hldc_tariff'));
     if (v && TARIFFS[v.region]) {
       return {
-        type: v.type === 'combined' ? 'combined' : 'ladder',
+        type: v.type === 'business' ? 'business' : (v.type === 'combined' ? 'combined' : 'ladder'),
         region: v.region,
         season: v.season === 'winter' ? 'winter' : 'summer',
       };
@@ -87,13 +92,13 @@ function getTariffCfg() {
   return { type: 'ladder', region: 'qy_main', season: currentSeason() };
 }
 
-/* 阶梯/合表电费；business 返回 null（暂不计算） */
+/* 阶梯/合表/商业电费 */
 function tariffCost(kwh, cfg) {
   cfg = cfg || getTariffCfg();
   kwh = Math.max(0, Number(kwh) || 0);
-  if (cfg.type === 'business') return null;
   const t = TARIFFS[cfg.region];
   if (!t) return kwh * 0.6;
+  if (cfg.type === 'business') return kwh * t.business;
   if (cfg.type === 'combined') return kwh * t.combined;
   const tiers = t.ladder[cfg.season] || t.ladder.summer;
   let cost = 0, prev = 0, q = kwh;
@@ -108,13 +113,14 @@ function tariffCost(kwh, cfg) {
   return cost;
 }
 
-/* 平均单价（元/kWh）；business 返回 0 */
+/* 平均单价（元/kWh） */
 function avgPrice(kwh, cfg) {
   cfg = cfg || getTariffCfg();
-  if (cfg.type === 'business') return 0;
   kwh = Math.max(0, Number(kwh) || 0);
+  const t = TARIFFS[cfg.region];
+  if (!t) return 0.6;
+  if (cfg.type === 'business') return t.business;
   if (kwh <= 0) {
-    const t = TARIFFS[cfg.region];
     if (cfg.type === 'combined') return t.combined;
     return (t.ladder[cfg.season] || t.ladder.summer)[0].price;
   }
@@ -126,7 +132,7 @@ function tariffLabel(cfg) {
   cfg = cfg || getTariffCfg();
   const t = TARIFFS[cfg.region];
   const region = t ? t.short : cfg.region;
-  if (cfg.type === 'business') return region + '·商业(待上线)';
+  if (cfg.type === 'business') return region + '·商业(平段)';
   if (cfg.type === 'combined') return region + '·合表';
   return region + '·阶梯（非分时）·' + (cfg.season === 'winter' ? '非夏季' : '夏季');
 }
@@ -137,6 +143,7 @@ function getPrice() {
   const t = TARIFFS[cfg.region];
   if (!t) return 0.59886875;
   if (cfg.type === 'combined') return t.combined;
+  if (cfg.type === 'business') return t.business;
   return (t.ladder[cfg.season] || t.ladder.summer)[0].price;
 }
 

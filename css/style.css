@@ -845,6 +845,13 @@ html.entered .splash,
   opacity: .55;
   cursor: not-allowed;
 }
+.region--static {
+  cursor: default;
+}
+.region--static.is-active {
+  border-color: var(--brand, #2b7fff);
+  background: #eaf2ff;
+}
 .region__name {
   font-size: 13.5px;
   font-weight: 650;
