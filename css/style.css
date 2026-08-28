@@ -215,9 +215,9 @@ html.entered .splash,
   max-width: 50%;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   gap: 4px;
-  text-align: right;
+  text-align: center;
 }
 .home-stats__btn {
   font-size: 14px;
@@ -235,8 +235,8 @@ html.entered .splash,
   font-size: 10.5px;
   line-height: 1.3;
   color: var(--muted);
-  max-width: 100px;
-  text-align: left;
+  max-width: 130px;
+  text-align: center;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
