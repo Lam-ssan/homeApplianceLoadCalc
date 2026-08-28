@@ -66,27 +66,22 @@
   function renderHome() {
     const arr = loadInst();
     const stats = $('#homeStats');
-    if (arr.length) {
-      let kwh = 0;
-      arr.forEach(it => {
-        if (DEVICES[it.type]) kwh += Engine.calc(DEVICES[it.type], it.config).kwh;
-      });
-      const cost = tariffCost(kwh);
-      stats.hidden = false;
-      stats.innerHTML = `
-        <div class="home-stats__nums">
-          <div><b>${arr.length}</b><span>台设备</span></div>
-          <div><b>${kwh.toFixed(0)}</b><span>kWh/月</span></div>
-          <div><b>${cost == null ? '—' : cost.toFixed(2)}</b><span>元/月</span></div>
-        </div>
-        <div class="home-stats__go">
-          <button type="button" class="home-stats__btn">设置电价</button>
-          <span class="home-stats__label">${tariffLabel().split('·').map(s => '<span class="tl-seg">' + s + '</span>').join('·')}</span>
-        </div>`;
-    } else {
-      stats.hidden = true;
-      stats.innerHTML = '';
-    }
+    let kwh = 0;
+    arr.forEach(it => {
+      if (DEVICES[it.type]) kwh += Engine.calc(DEVICES[it.type], it.config).kwh;
+    });
+    const cost = tariffCost(kwh);
+    stats.hidden = false;
+    stats.innerHTML = `
+      <div class="home-stats__nums">
+        <div><b>${arr.length}</b><span>台设备</span></div>
+        <div><b>${kwh.toFixed(0)}</b><span>kWh/月</span></div>
+        <div><b>${cost == null ? '—' : cost.toFixed(2)}</b><span>元/月</span></div>
+      </div>
+      <div class="home-stats__go">
+        <button type="button" class="home-stats__btn">设置电价</button>
+        <span class="home-stats__label">${tariffLabel().split('·').map(s => '<span class="tl-seg">' + s + '</span>').join('·')}</span>
+      </div>`;
 
     const counts = {};
     arr.forEach(it => { counts[it.type] = (counts[it.type] || 0) + 1; });
