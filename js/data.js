@@ -18,9 +18,127 @@
  * ============================================================ */
 
 const APP_CONFIG = {
-  price: 0.6,        // 电价 元/kWh
   ringMax: 200,      // 环形图满刻度 kWh（按月）
 };
+
+/* ============================================================
+ * 电价体系：清远居民阶梯电价（非分时）+ 合表电价
+ * 数据来源：清远本地宝《清远市电价价目表（最新）》（南方电网，2025-05）
+ *   分→元换算（如 59.886875 分/千瓦时 = 0.59886875 元/kWh）
+ *   ladder 阶梯按户按月分段；combined 合表平段价不分档；business 商业暂未实现
+ * 阈值：夏季(5-10月) 0-260 / 261-600 / 601+；非夏季 0-200 / 201-400 / 401+
+ * ============================================================ */
+const TARIFFS = {
+  qy_main: {
+    name: '清城区/清新区/阳山县/佛冈县/英德市',
+    short: '清远(主城区)',
+    ladder: {
+      summer: [ { upTo: 260, price: 0.59886875 }, { upTo: 600, price: 0.64886875 }, { upTo: Infinity, price: 0.89886875 } ],
+      winter: [ { upTo: 200, price: 0.59886875 }, { upTo: 400, price: 0.64886875 }, { upTo: Infinity, price: 0.89886875 } ],
+    },
+    combined: 0.63586875,
+  },
+  qy_ls: {  // 连山县
+    name: '连山县', short: '连山',
+    ladder: {
+      summer: [ { upTo: 260, price: 0.56086875 }, { upTo: 600, price: 0.61086875 }, { upTo: Infinity, price: 0.86086875 } ],
+      winter: [ { upTo: 200, price: 0.56086875 }, { upTo: 400, price: 0.61086875 }, { upTo: Infinity, price: 0.86086875 } ],
+    },
+    combined: 0.59786875,
+  },
+  qy_ln: {  // 连南县
+    name: '连南县', short: '连南',
+    ladder: {
+      summer: [ { upTo: 260, price: 0.56086875 }, { upTo: 600, price: 0.61086875 }, { upTo: Infinity, price: 0.86086875 } ],
+      winter: [ { upTo: 200, price: 0.56086875 }, { upTo: 400, price: 0.61086875 }, { upTo: Infinity, price: 0.86086875 } ],
+    },
+    combined: 0.59786875,
+  },
+  qy_lz: {  // 连州市
+    name: '连州市', short: '连州',
+    ladder: {
+      summer: [ { upTo: 260, price: 0.59116875 }, { upTo: 600, price: 0.64116875 }, { upTo: Infinity, price: 0.89116875 } ],
+      winter: [ { upTo: 200, price: 0.59116875 }, { upTo: 400, price: 0.64116875 }, { upTo: Infinity, price: 0.89116875 } ],
+    },
+    combined: 0.62816875,
+  },
+};
+
+const TARIFF_REGIONS = ['qy_main', 'qy_ls', 'qy_ln', 'qy_lz'];
+
+/* 当前月份默认季节（5-10月为夏季） */
+function currentSeason() {
+  const m = new Date().getMonth() + 1;
+  return (m >= 5 && m <= 10) ? 'summer' : 'winter';
+}
+
+/* 读取已存电价配置（localStorage: hldc_tariff = {type, region, season}） */
+function getTariffCfg() {
+  try {
+    const v = JSON.parse(localStorage.getItem('hldc_tariff'));
+    if (v && TARIFFS[v.region]) {
+      return {
+        type: v.type === 'combined' ? 'combined' : 'ladder',
+        region: v.region,
+        season: v.season === 'winter' ? 'winter' : 'summer',
+      };
+    }
+  } catch (e) {}
+  return { type: 'ladder', region: 'qy_main', season: currentSeason() };
+}
+
+/* 阶梯/合表电费；business 返回 null（暂不计算） */
+function tariffCost(kwh, cfg) {
+  cfg = cfg || getTariffCfg();
+  kwh = Math.max(0, Number(kwh) || 0);
+  if (cfg.type === 'business') return null;
+  const t = TARIFFS[cfg.region];
+  if (!t) return kwh * 0.6;
+  if (cfg.type === 'combined') return kwh * t.combined;
+  const tiers = t.ladder[cfg.season] || t.ladder.summer;
+  let cost = 0, prev = 0, q = kwh;
+  for (const tier of tiers) {
+    const up = tier.upTo === Infinity ? Infinity : tier.upTo;
+    const seg = Math.min(q, up - prev);
+    if (seg <= 0) break;
+    cost += seg * tier.price;
+    q -= seg; prev = up;
+    if (q <= 0) break;
+  }
+  return cost;
+}
+
+/* 平均单价（元/kWh）；business 返回 0 */
+function avgPrice(kwh, cfg) {
+  cfg = cfg || getTariffCfg();
+  if (cfg.type === 'business') return 0;
+  kwh = Math.max(0, Number(kwh) || 0);
+  if (kwh <= 0) {
+    const t = TARIFFS[cfg.region];
+    if (cfg.type === 'combined') return t.combined;
+    return (t.ladder[cfg.season] || t.ladder.summer)[0].price;
+  }
+  return tariffCost(kwh, cfg) / kwh;
+}
+
+/* 展示文案：清远(主城区)·阶梯·夏季 */
+function tariffLabel(cfg) {
+  cfg = cfg || getTariffCfg();
+  const t = TARIFFS[cfg.region];
+  const region = t ? t.short : cfg.region;
+  if (cfg.type === 'business') return region + '·商业(待上线)';
+  if (cfg.type === 'combined') return region + '·合表';
+  return region + '·阶梯（非分时）·' + (cfg.season === 'winter' ? '非夏季' : '夏季');
+}
+
+/* 兼容引擎内部粗略估算：返回当前档位首档/合表单价 */
+function getPrice() {
+  const cfg = getTariffCfg();
+  const t = TARIFFS[cfg.region];
+  if (!t) return 0.59886875;
+  if (cfg.type === 'combined') return t.combined;
+  return (t.ladder[cfg.season] || t.ladder.summer)[0].price;
+}
 
 const DEVICES = {
   /* ---------- 电风扇（多档位加权范例） ---------- */

@@ -83,7 +83,7 @@ const Engine = {
         const better = Engine.calc(dev, Object.assign({}, values, { setTemp: 26 })).kwh;
         const save = cur - better;
         push('danger', '🌡', '设定温度偏低（' + st + '℃）',
-          '调到 26℃ 这台每月约省 ' + save.toFixed(1) + ' kWh（约 ' + (save * APP_CONFIG.price).toFixed(1) + ' 元）。配合风扇体感相近。');
+          '调到 26℃ 这台每月约省 ' + save.toFixed(1) + ' kWh（约 ' + (save * getPrice()).toFixed(1) + ' 元）。配合风扇体感相近。');
       }
       if (selVal('filter') > 1) {
         push('info', '🧰', '滤网较脏', '清洗滤网可恢复风量，本项约 ' +

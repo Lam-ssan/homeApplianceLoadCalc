@@ -188,11 +188,10 @@ html.entered .splash,
   padding: 14px 14px 14px 16px;
   box-shadow: var(--shadow);
   margin-bottom: 16px;
-  cursor: pointer;
+  cursor: default;
   color: inherit;
 }
 .home-stats[hidden] { display: none; }
-.home-stats:active { transform: scale(.985); }
 .home-stats__nums {
   flex: 1;
   display: flex;
@@ -213,14 +212,35 @@ html.entered .splash,
 .home-stats__nums span { font-size: 11px; color: var(--muted); }
 .home-stats__go {
   flex: none;
-  font-size: 12px;
+  max-width: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+.home-stats__btn {
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
   background: linear-gradient(135deg, var(--blue), var(--blue-d));
+  border: none;
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   white-space: nowrap;
+  cursor: pointer;
 }
+.home-stats__btn:active { transform: scale(.97); }
+.home-stats__label {
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--muted);
+  max-width: 100px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.home-stats__label .tl-seg { white-space: nowrap; }
 
 .section-title {
   font-size: 14px;
@@ -691,7 +711,7 @@ html.entered .splash,
 }
 .modal__box {
   position: relative;
-  width: min(78vw, 300px);
+  width: min(92vw, 360px);
   background: #fff;
   border-radius: var(--radius);
   padding: 22px 18px 16px;
@@ -710,6 +730,131 @@ html.entered .splash,
 }
 .modal__actions { display: flex; gap: 10px; }
 .modal__btn { flex: 1; padding: 11px 0; border-radius: 12px; font-size: 14.5px; }
+.modal__title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink, #16375c);
+  padding: 2px 4px 4px;
+}
+.modal__hint {
+  text-align: center;
+  font-size: 12.5px;
+  color: #7c8aa0;
+  margin: 0 0 14px;
+}
+/* ---------- 电价设置弹窗（阶梯/合表/商业） ---------- */
+#priceModal .modal__box {
+  height: min(80vh, 540px);
+  display: flex;
+  flex-direction: column;
+}
+#priceModal .tariff-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 2px;
+}
+.tariff-tabs {
+  display: flex;
+  gap: 6px;
+  background: #f1f5fb;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.tariff-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  padding: 8px 4px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #5b738f;
+  text-align: center;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all .15s;
+}
+.tariff-tab.is-active {
+  background: #fff;
+  color: var(--brand, #2b7fff);
+  box-shadow: 0 2px 8px rgba(43, 127, 255, .14);
+}
+.tariff-season {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.tariff-season__label {
+  font-size: 13px;
+  color: #7c8aa0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.seg {
+  display: flex;
+  flex: 1;
+  background: #f1f5fb;
+  border-radius: 10px;
+  padding: 3px;
+}
+.seg__btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 7px 4px;
+  font-size: 12.5px;
+  font-weight: 640;
+  color: #5b738f;
+  cursor: pointer;
+  transition: all .15s;
+}
+.seg__btn.is-active {
+  background: #fff;
+  color: var(--brand, #2b7fff);
+  box-shadow: 0 2px 6px rgba(43, 127, 255, .14);
+}
+.region-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.region {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  border: 1.5px solid #e2e8f2;
+  background: #f8fafd;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.region.is-active {
+  border-color: var(--brand, #2b7fff);
+  background: #eaf2ff;
+}
+.region--disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+.region__name {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: #2b3f57;
+}
+.region__price {
+  font-size: 11.5px;
+  color: #7c8aa0;
+}
+.region.is-active .region__price { color: var(--brand, #2b7fff); }
 .btn-danger {
   background: var(--danger);
   color: #fff;

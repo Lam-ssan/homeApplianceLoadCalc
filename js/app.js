@@ -28,6 +28,12 @@
   function saveInst(arr) { localStorage.setItem(STORE_INST, JSON.stringify(arr)); }
   function genIid(type) { return type + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000); }
 
+  /* 已保存设备的月用电总量 */
+  function sumInstancesKwh() {
+    return loadInst().reduce((s, it) =>
+      s + (DEVICES[it.type] ? Engine.calc(DEVICES[it.type], it.config).kwh : 0), 0);
+  }
+
   const VIEW_META = {
     'view-home': ['家庭用电智能诊断器', '选择家电，测算月用电'],
     'view-calc': ['用电测算', '填写参数，实时估算'],
@@ -65,14 +71,18 @@
       arr.forEach(it => {
         if (DEVICES[it.type]) kwh += Engine.calc(DEVICES[it.type], it.config).kwh;
       });
+      const cost = tariffCost(kwh);
       stats.hidden = false;
       stats.innerHTML = `
         <div class="home-stats__nums">
           <div><b>${arr.length}</b><span>台设备</span></div>
           <div><b>${kwh.toFixed(0)}</b><span>kWh/月</span></div>
-          <div><b>${(kwh * APP_CONFIG.price).toFixed(0)}</b><span>元/月</span></div>
+          <div><b>${cost == null ? '—' : cost.toFixed(2)}</b><span>元/月</span></div>
         </div>
-        <div class="home-stats__go">全屋诊断</div>`;
+        <div class="home-stats__go">
+          <button type="button" class="home-stats__btn">设置电价</button>
+          <span class="home-stats__label">${tariffLabel().split('·').map(s => '<span class="tl-seg">' + s + '</span>').join('·')}</span>
+        </div>`;
     } else {
       stats.hidden = true;
       stats.innerHTML = '';
@@ -238,8 +248,10 @@
     if (!currentId) return;
     const dev = DEVICES[currentId];
     const { kwh } = Engine.calc(dev, values);
+    const total = sumInstancesKwh() + kwh;
+    const cost = kwh * avgPrice(total);
     $('#rKwh').textContent = kwh.toFixed(2);
-    $('#rCost').textContent = (kwh * APP_CONFIG.price).toFixed(2);
+    $('#rCost').textContent = cost.toFixed(2);
   }
 
   /* ---------- 单台设备诊断 ---------- */
@@ -249,7 +261,9 @@
     const { kwh } = Engine.calc(dev, values);
     const best = Engine.bestKwh(dev, values);
     const savingKwh = Math.max(0, kwh - best);
-    const savingCost = savingKwh * APP_CONFIG.price;
+    const total = sumInstancesKwh() + kwh;
+    const unit = avgPrice(total);
+    const savingCost = savingKwh * unit;
 
     const ringMax = dev.ringMax || APP_CONFIG.ringMax;
     const pct = Math.min(kwh / ringMax, 1);
@@ -258,7 +272,7 @@
 
     $('#ringKwh').textContent = kwh.toFixed(1);
     $('#resDevice').textContent = dev.name;
-    $('#resCost').textContent = (kwh * APP_CONFIG.price).toFixed(2) + ' 元';
+    $('#resCost').textContent = (kwh * unit).toFixed(2) + ' 元';
     $('#resSaving').textContent = savingCost.toFixed(1) + ' 元';
 
     const tips = Engine.diagnose(dev, values);
@@ -314,10 +328,12 @@
     });
 
     summary.style.display = '';
+    const hsCost = tariffCost(totalKwh);
     $('#hsCount').textContent = String(rows.length);
     $('#hsKwh').textContent = totalKwh.toFixed(1);
-    $('#hsCost').textContent = (totalKwh * APP_CONFIG.price).toFixed(2);
-    $('#hsSave').textContent = (totalSave * APP_CONFIG.price).toFixed(1);
+    $('#hsCost').textContent = hsCost == null ? '—' : hsCost.toFixed(2);
+    const hsSave = hsCost == null ? 0 : Math.max(0, hsCost - (tariffCost(totalKwh - totalSave) || 0));
+    $('#hsSave').textContent = hsSave.toFixed(1);
 
     rows.sort((a, b) => b.kwh - a.kwh);
     const max = rows.length ? rows[0].kwh : 0;
@@ -333,7 +349,7 @@
           <span><b>${r.kwh.toFixed(1)}</b> kWh · 占${share}%</span>
         </div>
         <div class="rank-bar"><i style="width:${pct}%"></i></div>
-        ${r.save > 0.05 ? `<div class="rank-save">省电潜力约 ${(r.save * APP_CONFIG.price).toFixed(1)} 元/月</div>` : ''}`;
+        ${r.save > 0.05 ? `<div class="rank-save">省电潜力约 ${(r.save * avgPrice(totalKwh)).toFixed(1)} 元/月</div>` : ''}`;
       rankBox.appendChild(el);
     });
 
@@ -424,8 +440,9 @@
     let totalKwh = 0, totalCount = 0;
     arr.forEach(it => { if (DEVICES[it.type]) { totalCount++; totalKwh += Engine.calc(DEVICES[it.type], it.config).kwh; } });
     $('#ownCount').textContent = totalCount;
+    const ownCost = tariffCost(totalKwh);
     $('#ownKwh').textContent = totalKwh.toFixed(1);
-    $('#ownCost').textContent = (totalKwh * APP_CONFIG.price).toFixed(2);
+    $('#ownCost').textContent = ownCost == null ? '—' : ownCost.toFixed(2);
     const badge = $('#ownBadge');
     if (totalCount > 0) { badge.hidden = false; badge.textContent = totalCount; }
     else { badge.hidden = true; }
@@ -519,6 +536,16 @@
   }
 
   /* ---------- 事件绑定 ---------- */
+  /* ---------- 价格刷新：保存电价后重算所有费用展示 ---------- */
+  function refreshPrices() {
+    renderHome();
+    renderOwned();
+    const active = $('.view--active') ? $('.view--active').id : '';
+    if (active === 'view-house') renderHouse();
+    if (active === 'view-calc' || active === 'view-result') live();
+    if (active === 'view-result') diagnose();
+  }
+
   function bind() {
     $$('.tab').forEach(t => t.addEventListener('click', () => {
       const v = t.dataset.view;
@@ -547,11 +574,85 @@
       renderHome();
       showView('view-home');
     });
-    $('#homeStats').addEventListener('click', () => {
-      renderHouse();
-      showView('view-house');
-    });
     $('#btnEnter').addEventListener('click', enterApp);
+
+    /* ---------- 电价设置弹窗（阶梯/合表/商业） ---------- */
+    const priceModal = $('#priceModal');
+    let draftTariff = null;
+
+    function regionRowsHtml(type) {
+      return TARIFF_REGIONS.map(rk => {
+        const t = TARIFFS[rk];
+        let price;
+        if (type === 'combined') price = '¥' + t.combined.toFixed(3) + '/度';
+        else price = '一档¥' + t.ladder.summer[0].price.toFixed(3) +
+          ' · 二档¥' + t.ladder.summer[1].price.toFixed(3) +
+          ' · 三档¥' + t.ladder.summer[2].price.toFixed(3);
+        return `<button type="button" class="region${type === 'business' ? ' region--disabled' : ''}" data-region="${rk}">
+                  <span class="region__name">${t.name}</span>
+                  <span class="region__price">${price}</span>
+                </button>`;
+      }).join('');
+    }
+
+    function buildTariffModal() {
+      $('#regionListLadder').innerHTML = regionRowsHtml('ladder');
+      $('#regionListCombined').innerHTML = regionRowsHtml('combined');
+    }
+
+    function capPanel(type) { return 'regionList' + type.charAt(0).toUpperCase() + type.slice(1); }
+
+    function syncTariffModal() {
+      $$('.tariff-tab').forEach(b => b.classList.toggle('is-active', b.dataset.type === draftTariff.type));
+      $$('.tariff-panel').forEach(p => { p.hidden = p.dataset.panel !== draftTariff.type; });
+      $$('.seg__btn').forEach(b => b.classList.toggle('is-active', b.dataset.season === draftTariff.season));
+      ['ladder', 'combined', 'business'].forEach(type => {
+        $$('#' + capPanel(type) + ' .region').forEach(el => {
+          el.classList.toggle('is-active', el.dataset.region === draftTariff.region);
+        });
+      });
+    }
+
+    function openTariffModal() {
+      draftTariff = getTariffCfg();
+      syncTariffModal();
+      priceModal.hidden = false;
+    }
+
+    buildTariffModal();
+
+    $$('.tariff-tab').forEach(b => b.addEventListener('click', () => {
+      draftTariff.type = b.dataset.type;
+      syncTariffModal();
+    }));
+    $$('.seg__btn').forEach(b => b.addEventListener('click', () => {
+      draftTariff.season = b.dataset.season;
+      syncTariffModal();
+    }));
+    ['ladder', 'combined', 'business'].forEach(type => {
+      const list = $('#' + capPanel(type));
+      if (list) list.addEventListener('click', e => {
+        if (type === 'business') { toast('商业电价计算即将上线'); return; }
+        const btn = e.target.closest('.region');
+        if (!btn) return;
+        draftTariff.region = btn.dataset.region;
+        syncTariffModal();
+      });
+    });
+
+    $('#priceCancel').addEventListener('click', () => { priceModal.hidden = true; });
+    priceModal.querySelector('.modal__mask').addEventListener('click', () => { priceModal.hidden = true; });
+    $('#priceSave').addEventListener('click', () => {
+      if (draftTariff.type === 'business') { toast('商业电价计算即将上线'); priceModal.hidden = true; return; }
+      try { localStorage.setItem('hldc_tariff', JSON.stringify(draftTariff)); } catch (e) {}
+      priceModal.hidden = true;
+      refreshPrices();
+      toast('电价已更新：' + tariffLabel(draftTariff));
+    });
+
+    $('#homeStats').addEventListener('click', e => {
+      if (e.target.closest('.home-stats__btn')) openTariffModal();
+    });
   }
 
   /* ---------- 启动 ---------- */
