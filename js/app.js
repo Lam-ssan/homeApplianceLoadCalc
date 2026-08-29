@@ -75,7 +75,7 @@
     stats.innerHTML = `
       <div class="home-stats__nums">
         <div><b>${arr.length}</b><span>台设备</span></div>
-        <div><b>${kwh.toFixed(0)}</b><span>kWh/月</span></div>
+        <div><b>${kwh.toFixed(2)}</b><span>kWh/月</span></div>
         <div><b>${cost == null ? '—' : cost.toFixed(2)}</b><span>元/月</span></div>
       </div>
       <div class="home-stats__go">
@@ -265,7 +265,7 @@
     const C = 2 * Math.PI * 52;
     $('#ringFg').style.strokeDashoffset = (C * (1 - pct)).toFixed(1);
 
-    $('#ringKwh').textContent = kwh.toFixed(1);
+    $('#ringKwh').textContent = kwh.toFixed(2);
     $('#resDevice').textContent = dev.name;
     $('#resCost').textContent = (kwh * unit).toFixed(2) + ' 元';
     $('#resSaving').textContent = savingCost.toFixed(1) + ' 元';
@@ -325,7 +325,7 @@
     summary.style.display = '';
     const hsCost = tariffCost(totalKwh);
     $('#hsCount').textContent = String(rows.length);
-    $('#hsKwh').textContent = totalKwh.toFixed(1);
+    $('#hsKwh').textContent = totalKwh.toFixed(2);
     $('#hsCost').textContent = hsCost == null ? '—' : hsCost.toFixed(2);
     const hsSave = hsCost == null ? 0 : Math.max(0, hsCost - (tariffCost(totalKwh - totalSave) || 0));
     $('#hsSave').textContent = hsSave.toFixed(1);
@@ -443,7 +443,7 @@
     arr.forEach(it => { if (DEVICES[it.type]) { totalCount++; totalKwh += Engine.calc(DEVICES[it.type], it.config).kwh; } });
     $('#ownCount').textContent = totalCount;
     const ownCost = tariffCost(totalKwh);
-    $('#ownKwh').textContent = totalKwh.toFixed(1);
+    $('#ownKwh').textContent = totalKwh.toFixed(2);
     $('#ownCost').textContent = ownCost == null ? '—' : ownCost.toFixed(2);
     const badge = $('#ownBadge');
     if (totalCount > 0) { badge.hidden = false; badge.textContent = totalCount; }
