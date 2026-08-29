@@ -703,6 +703,8 @@ html.entered .splash,
   justify-content: center;
 }
 .modal[hidden] { display: none; }
+body.modal-open { overflow: hidden; }
+body.modal-open .view { overflow: hidden; }
 .modal__mask {
   position: absolute;
   inset: 0;

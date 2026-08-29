@@ -398,6 +398,10 @@
     showView('view-owned');
   }
 
+  /* ---------- 弹窗滚动锁定 ---------- */
+  function lockScroll() { document.body.classList.add('modal-open'); }
+  function unlockScroll() { document.body.classList.remove('modal-open'); }
+
   /* ---------- 自定义确认弹窗 ---------- */
   function appConfirm(msg, okText) {
     return new Promise(resolve => {
@@ -405,8 +409,10 @@
       $('#confirmText').textContent = msg;
       $('#confirmOk').textContent = okText || '确定';
       modal.hidden = false;
+      lockScroll();
       const done = val => {
         modal.hidden = true;
+        unlockScroll();
         $('#confirmOk').removeEventListener('click', onOk);
         $('#confirmCancel').removeEventListener('click', onCancel);
         $('.modal__mask', modal).removeEventListener('click', onCancel);
@@ -613,6 +619,7 @@
       draftTariff = getTariffCfg();
       syncTariffModal();
       priceModal.hidden = false;
+      lockScroll();
     }
 
     buildTariffModal();
@@ -635,11 +642,12 @@
       });
     });
 
-    $('#priceCancel').addEventListener('click', () => { priceModal.hidden = true; });
-    priceModal.querySelector('.modal__mask').addEventListener('click', () => { priceModal.hidden = true; });
+    $('#priceCancel').addEventListener('click', () => { priceModal.hidden = true; unlockScroll(); });
+    priceModal.querySelector('.modal__mask').addEventListener('click', () => { priceModal.hidden = true; unlockScroll(); });
     $('#priceSave').addEventListener('click', () => {
       try { localStorage.setItem('hldc_tariff', JSON.stringify(draftTariff)); } catch (e) {}
       priceModal.hidden = true;
+      unlockScroll();
       refreshPrices();
       toast('电价已更新：' + tariffLabel(draftTariff));
     });
