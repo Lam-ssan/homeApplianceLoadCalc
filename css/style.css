@@ -36,8 +36,10 @@ img { max-width: 100%; display: block; }
 #app {
   max-width: 480px;
   margin: 0 auto;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   min-height: 100vh;
-  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -137,6 +139,13 @@ html.entered .splash,
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.view::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 .view--active { display: block; }
 
@@ -181,9 +190,7 @@ html.entered .splash,
   gap: 10px;
   text-align: left;
   border: 1px solid rgba(255, 255, 255, .88);
-  background: linear-gradient(135deg, rgba(43, 127, 255, .12), rgba(255, 255, 255, .7));
-  backdrop-filter: var(--glass);
-  -webkit-backdrop-filter: var(--glass);
+  background: linear-gradient(135deg, #cfe2ff, #ffffff);
   border-radius: var(--radius);
   padding: 14px 14px 14px 16px;
   box-shadow: var(--shadow);
@@ -192,6 +199,30 @@ html.entered .splash,
   color: inherit;
 }
 .home-stats[hidden] { display: none; }
+
+/* 首页：数据条作为固定头部，设备列表在其下方独立滚动，不再滚到条背后 */
+#view-home.view--active {
+  display: flex;
+  flex-direction: column;
+}
+#view-home.view--active .home-stats {
+  flex: none;
+}
+#deviceCats {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 44px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 44px);
+}
+#deviceCats::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
 .home-stats__nums {
   flex: 1;
   display: flex;
