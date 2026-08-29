@@ -122,9 +122,41 @@ html.entered .splash,
 }
 .app-bar__back[hidden] { display: none; }
 .app-bar__back:active { background: rgba(255,255,255,.28); }
-.app-bar__text { min-width: 0; }
-.app-bar__title { font-size: 17px; font-weight: 700; letter-spacing: .02em; }
+.app-bar__text { min-width: 0; flex: 1 1 auto; }
+.app-bar__title { font-size: 17px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-bar__sub { font-size: 12px; opacity: .88; margin-top: 1px; }
+.app-bar__price {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--blue-d));
+  border: 1px solid rgba(255, 255, 255, .65);
+  border-radius: 999px;
+  padding: 7px 15px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.app-bar__price:active { transform: scale(.96); filter: brightness(.94); }
+.app-bar__price-wrap {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.app-bar__price-desc {
+  font-size: 11px;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, .92);
+  text-align: right;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
 
 .view-host {
   flex: 1;
@@ -241,37 +273,6 @@ html.entered .splash,
   font-variant-numeric: tabular-nums;
 }
 .home-stats__nums span { font-size: 11px; color: var(--muted); }
-.home-stats__go {
-  flex: none;
-  max-width: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  text-align: center;
-}
-.home-stats__btn {
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, var(--blue), var(--blue-d));
-  border: none;
-  border-radius: 999px;
-  padding: 8px 14px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.home-stats__btn:active { transform: scale(.97); }
-.home-stats__label {
-  font-size: 10.5px;
-  line-height: 1.3;
-  color: var(--muted);
-  max-width: 130px;
-  text-align: center;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-.home-stats__label .tl-seg { white-space: nowrap; }
 
 .section-title {
   font-size: 14px;

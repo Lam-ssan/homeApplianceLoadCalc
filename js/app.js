@@ -77,10 +77,6 @@
         <div><b>${arr.length}</b><span>台设备</span></div>
         <div><b>${kwh.toFixed(2)}</b><span>kWh/月</span></div>
         <div><b>${cost == null ? '—' : cost.toFixed(2)}</b><span>元/月</span></div>
-      </div>
-      <div class="home-stats__go">
-        <button type="button" class="home-stats__btn">设置电价</button>
-        <span class="home-stats__label">${tariffLabel().split('·').map(s => '<span class="tl-seg">' + s + '</span>').join('·')}</span>
       </div>`;
 
     const counts = {};
@@ -539,9 +535,15 @@
 
   /* ---------- 事件绑定 ---------- */
   /* ---------- 价格刷新：保存电价后重算所有费用展示 ---------- */
+  function renderPriceDesc() {
+    const el = $('#appPriceDesc');
+    if (el) el.textContent = tariffLabel();
+  }
+
   function refreshPrices() {
     renderHome();
     renderOwned();
+    renderPriceDesc();
     const active = $('.view--active') ? $('.view--active').id : '';
     if (active === 'view-house') renderHouse();
     if (active === 'view-calc' || active === 'view-result') live();
@@ -652,9 +654,7 @@
       toast('电价已更新：' + tariffLabel(draftTariff));
     });
 
-    $('#homeStats').addEventListener('click', e => {
-      if (e.target.closest('.home-stats__btn')) openTariffModal();
-    });
+    $('#appPrice').addEventListener('click', openTariffModal);
   }
 
   /* ---------- 启动 ---------- */
@@ -662,6 +662,7 @@
   renderHome();
   renderOwned();
   bind();
+  renderPriceDesc();
   showView('view-home');
   if (document.documentElement.classList.contains('entered')) {
     const splash = $('#splash');
