@@ -1,0 +1,23 @@
+{
+  "name": "homeapplianceloadcalc",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   <img src=\"二维码图片（家庭用电智能诊断器）.png\" alt=\"家庭用电智能诊断器二维码\" width=\"200\" /> </p>",
+  "main": "create_docx.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lam-ssan/homeApplianceLoadCalc.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Lam-ssan/homeApplianceLoadCalc/issues"
+  },
+  "homepage": "https://github.com/Lam-ssan/homeApplianceLoadCalc#readme",
+  "dependencies": {
+    "docx": "^9.7.1"
+  }
+}
