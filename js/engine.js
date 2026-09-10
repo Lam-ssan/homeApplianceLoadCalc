@@ -110,6 +110,33 @@ const Engine = {
       }
     }
 
+    if (dev.model === 'hot_water_heatpump') {
+      const tout = num('tout');
+      const cop = num('cop');
+      if (tout < 5) {
+        push('warn', '❄️', '环境温度较低',
+          '低温环境下COP下降明显，电辅热会频繁启动，冬季耗电约为夏季的2-3倍，属正常现象。');
+      }
+      if (cop < 3.4) {
+        push('info', '⚡', '额定COP偏低',
+          '国标要求家用空气能COP≥3.4，当前设置偏低可能导致节能效果不明显。建议选购一级能效产品。');
+      }
+      if (num('setTemp') >= 60) {
+        const better = Engine.calc(dev, Object.assign({}, values, { setTemp: 55 })).kwh;
+        const save = cur - better;
+        push('info', '🌡', '设定温度较高',
+          '降到 55℃ 每月约省 ' + save.toFixed(1) + ' kWh，40℃混水已足够舒适。');
+      }
+      if (num('tin') <= 10) {
+        push('info', '❄️', '进水温度低',
+          '冬季进水温度低会增加加热耗电，可考虑利用夜间谷电提前蓄热。');
+      }
+      if (num('auxPower') > 0 && tout < 0) {
+        push('info', '🔌', '电辅热启用中',
+          '极寒天气电辅热启动会显著增加耗电，如当地冬季频繁低于-5℃，建议选择喷气增焓低温机型。');
+      }
+    }
+
     if (dev.model === 'nameplate_daily') {
       if (selVal('place') >= 1.25) {
         push('warn', '🏠', '放置在高温位置', '冰箱散热不良耗电明显上升，有条件移到阴凉通风处，两侧留出散热空隙。');
@@ -246,5 +273,54 @@ const MODEL_FUNCS = {
     const eLossDay = q24 * kSet;
 
     return (eHeatDay + eLossDay) * 30;
+  },
+
+  /* 空气能热水器（热泵加热：COP 随环境温度变化 + 低温电辅热） */
+  hot_water_heatpump(v) {
+    const showers = Number(v.showers) || 0;
+    const showerL = Number(v.showerL) || 40;
+    const otherL = Number(v.otherL) || 0;
+    const tin = Number(v.tin) || 18;
+    const setTemp = Number(v.setTemp) || 55;
+    const tout = Number(v.tout) || 25;
+    const cop20 = Number(v.cop) || 4.0;
+    const heatPower = Number(v.heatPower) || 840;
+    const auxPower = Number(v.auxPower) || 0;
+
+    // 日用水量（40℃混水）
+    const V40 = showers * showerL + otherL;
+    const dTw = Math.max(40 - tin, 0);
+
+    // 日需热量 kWh（物理公式：V × ΔT × 4.186kJ/(kg·℃) ÷ 3600）
+    const eHeatDay = 0.001163 * V40 * dTw;
+
+    // COP随环境温度修正（以20℃为基准，参考实测数据）
+    let cop;
+    if (tout >= 25) cop = cop20 * 1.1;       // 夏季高温，COP最优
+    else if (tout >= 15) cop = cop20;          // 春秋常温
+    else if (tout >= 5) cop = cop20 * 0.75;   // 初冬
+    else if (tout >= 0) cop = cop20 * 0.55;   // 低温
+    else cop = cop20 * 0.4;                    // 极寒，COP大幅衰减
+
+    cop = Math.max(cop, 1.0);
+
+    // 热泵制热耗电
+    let eHeatPumpDay = eHeatDay / cop;
+
+    // 低温电辅热：COP<2时启动部分电辅热补偿
+    let auxRatio = 0;
+    if (cop < 2.0 && auxPower > 0) {
+      auxRatio = Math.min((2.0 - cop) / 1.0, 1.0);
+      // 电辅热补充的热量 = 需热量 × 辅热比例，由电辅热提供
+      eHeatPumpDay += (auxPower / 1000) * auxRatio * (eHeatDay / (heatPower / 1000 + 0.001));
+    }
+
+    // 保温暖损失（热泵水箱保温通常更好，热损系数约为电热水器的60%）
+    const volume = Number(v.volume) || 200;
+    const q24 = Math.min(Math.max(0.42 + (volume - 40) * 0.005, 0.25), 1.5);
+    const kSet = Math.min(Math.max((setTemp - 25) / 30, 0.5), 2.0);
+    const eLossDay = q24 * kSet;
+
+    return (eHeatPumpDay + eLossDay) * 30;
   },
 };

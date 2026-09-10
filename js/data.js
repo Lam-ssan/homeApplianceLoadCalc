@@ -374,6 +374,38 @@ const DEVICES = {
     best: {},
   },
 
+  /* ---------- 空气能热水器（热泵加热，COP 随环境温度变化） ---------- */
+  wh_heatpump: {
+    id: 'wh_heatpump', name: '空气能热水器', icon: '♻️', model: 'hot_water_heatpump',
+    desc: '利用空气热量加热水，能效比电热水器高3-5倍，低温时需电辅热', ringMax: 120,
+    fields: [
+      { key: 'volume', label: '水箱容积', unit: 'L', type: 'number', group: 'identity', default: 200, min: 50, step: 50 },
+      { key: 'heatPower', label: '额定输入功率（压缩机）', unit: 'W', type: 'number', group: 'identity', default: 840, min: 200, step: 50,
+        tip: '压缩机功率，通常为600-1200W，与制热量比值约为1:4' },
+      { key: 'cop', label: '额定COP（20℃工况）', unit: '', type: 'number', group: 'identity', default: 4.0, min: 1.5, max: 6.0, step: 0.1,
+        tip: '国标要求≥3.4，优质产品可达4.0以上；COP=制热量÷输入功率' },
+      { key: 'auxPower', label: '电辅热功率', unit: 'W', type: 'number', group: 'identity', default: 2000, min: 0, step: 100,
+        tip: '低温环境启动电辅热，可设为0表示无电辅热' },
+      { key: 'setTemp', label: '设定温度', unit: '℃', type: 'number', group: 'identity', default: 55, min: 40, max: 65, step: 5 },
+      { key: 'showers', label: '每天淋浴人次', unit: '人次', type: 'number', group: 'usage', default: 2.4, min: 0, step: 0.2 },
+      { key: 'showerL', label: '每人次淋浴用水', unit: 'L(40℃)', type: 'number', group: 'usage', default: 40, min: 20, max: 80, step: 5 },
+      { key: 'otherL', label: '厨房洗手等其他热水', unit: 'L/天', type: 'number', group: 'usage', default: 15, min: 0, step: 5 },
+      { key: 'tout', label: '本月典型室外温度', unit: '℃', type: 'number', group: 'env', role: 'climate',
+        default: 25, min: -20, max: 43, step: 1 },
+      { key: 'tin', label: '本月进水温度', unit: '℃', type: 'number', group: 'env', role: 'climate',
+        default: 18, min: 2, max: 32, step: 1 },
+    ],
+    presets: {
+      key: 'volume',
+      items: [
+        { label: '150L·1-3人', value: 150 },
+        { label: '200L·3-5人', value: 200 },
+        { label: '300L·5-7人', value: 300 },
+      ], unit: '',
+    },
+    best: {},
+  },
+
   /* ---------- 电视（恒功率，尺寸预设） ---------- */
   tv: {
     id: 'tv', name: '电视', icon: '📺', model: 'constant_power',
@@ -582,14 +614,14 @@ const DEVICES = {
 };
 
 const DEVICE_ORDER = [
-  'fan', 'ac', 'fridge', 'washer', 'wh_tank',
+  'fan', 'ac', 'fridge', 'washer', 'wh_tank', 'wh_heatpump',
   'tv', 'computer', 'ricecooker', 'microwave', 'rangehood',
   'hairdryer', 'vacuum', 'lighting', 'alwayson', 'wh_instant',
 ];
 
 const DEVICE_CATS = [
   { id: 'climate', name: '制冷与环境', ids: ['fan', 'ac', 'fridge'] },
-  { id: 'water', name: '热水与洗衣', ids: ['washer', 'wh_tank', 'wh_instant'] },
+  { id: 'water', name: '热水与洗衣', ids: ['washer', 'wh_tank', 'wh_heatpump', 'wh_instant'] },
   { id: 'kitchen', name: '厨房', ids: ['ricecooker', 'microwave', 'rangehood'] },
   { id: 'life', name: '生活娱乐', ids: ['tv', 'computer', 'hairdryer', 'vacuum', 'lighting'] },
   { id: 'always', name: '常开设备', ids: ['alwayson'] },
